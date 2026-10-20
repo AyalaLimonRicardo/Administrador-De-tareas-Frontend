@@ -2,7 +2,7 @@
 
 ## 1. ¿Qué función cumple la interfaz Task?
 
-Task describe la estructura que debe tener cada objeto de tarea: id, title, status, createdAt y updatedAt. Funciona como un contrato común, de modo que TypeScript avisa durante el desarrollo si a un objeto le falta una propiedad o tiene un tipo incorrecto.
+Task describe la estructura que debe tener cada objeto de tarea: id, title, status, createdAt y updatedAt. Funciona como un contrato común, de modo que TypeScript avisa durante el desarrollo si a un objeto le falta una propiedad o tiene un tipo incorrectoo.
 
 ## 2. ¿Qué diferencia existe entre Task y TaskStatus?
 
