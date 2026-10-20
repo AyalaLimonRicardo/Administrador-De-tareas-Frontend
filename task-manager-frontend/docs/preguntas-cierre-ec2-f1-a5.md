@@ -46,4 +46,4 @@ TaskItem, porque con la misma estructura muestra tareas distintas solo cambiando
 
 ## 12. ¿Qué dificultad encontraste y cómo la resolviste?
 
-Escribe aquí tu respuesta con tus propias palabras.
+Ni una pa
