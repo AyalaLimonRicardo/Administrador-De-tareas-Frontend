@@ -46,4 +46,4 @@ Porque son datos derivados: el total, los pendientes y los completados pueden ob
 
 ## 12. ¿Qué dificultad encontraste durante la refactorización y cómo la resolviste?
 
-Escribe aquí tu respuesta con tus propias palabras.
+La verdad al revisar tuve dudas con los hooks y los useState
