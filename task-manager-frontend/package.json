@@ -1,25 +1,38 @@
 {
-  "name": "task-manager-frontend",
+  "name": "task-manager-backend",
+  "version": "1.0.0",
+  "description": "API REST de gestión de tareas con Express y TypeScript.",
   "private": true,
-  "version": "0.0.0",
   "type": "module",
+  "main": "dist/server.js",
   "scripts": {
-    "dev": "vite",
-    "build": "tsc -b && vite build",
-    "lint": "oxlint",
-    "preview": "vite preview"
+    "dev": "tsx watch src/server.ts",
+    "check": "tsc --noEmit",
+    "build": "tsc",
+    "start": "node dist/server.js"
+  },
+  "keywords": [
+    "node",
+    "typescript",
+    "backend",
+    "express",
+    "api-rest"
+  ],
+  "license": "ISC",
+  "devDependencies": {
+    "@types/express": "^5.0.6",
+    "@types/node": "^22.10.2",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild"
+    ]
   },
   "dependencies": {
-    "react": "^19.3.1",
-    "react-dom": "^19.3.1"
-  },
-  "devDependencies": {
-    "@types/node": "^24.19.2",
-    "@types/react": "^19.3.0",
-    "@types/react-dom": "^19.3.0",
-    "@vitejs/plugin-react": "^6.1.2",
-    "oxlint": "^1.88.0",
-    "typescript": "~7.0.2",
-    "vite": "^8.3.4"
+    "dotenv": "^18.0.4",
+    "express": "^5.2.1",
+    "mongoose": "^8.24.7"
   }
 }
