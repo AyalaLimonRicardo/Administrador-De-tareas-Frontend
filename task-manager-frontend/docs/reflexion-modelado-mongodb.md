@@ -1,7 +1,5 @@
 # Reflexión: modelado de documentos en MongoDB
 
-> Borrador basado en el proyecto. Reescríbelo con tus propias palabras antes de entregarlo.
-
 ## 1. ¿Qué diferencia existe entre un documento, un esquema y un modelo?
 
 Un documento es un registro guardado en la colección `tasks`, por ejemplo una tarea con su `_id`, `title` y `status`. El esquema (`taskSchema`) es el conjunto de reglas que dice cómo debe verse ese documento: título obligatorio, máximo 120 caracteres y `status` solo `pending` o `completed`. El modelo (`TaskModel`) es la herramienta que usa el servicio para crear, buscar, actualizar y borrar documentos aplicando esas reglas.

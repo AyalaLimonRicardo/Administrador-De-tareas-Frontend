@@ -1,6 +1,5 @@
 # Reflexión: CRUD persistente con Express y MongoDB
 
-> Borrador basado en el proyecto. Reescríbelo con tus propias palabras antes de entregarlo.
 
 ## 1. ¿Qué operación de Mongoose corresponde a cada letra de CRUD?
 
