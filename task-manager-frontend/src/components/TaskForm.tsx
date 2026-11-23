@@ -2,26 +2,33 @@ import { useState } from 'react';
 import type { FormEvent } from 'react';
 
 interface TaskFormProps {
-  onAddTask: (title: string) => void;
+  // Devuelve true cuando la API aceptó la tarea; si falla, el título se conserva.
+  onAddTask: (title: string) => Promise<boolean>;
 }
 
 export function TaskForm({
   onAddTask,
 }: TaskFormProps) {
   const [title, setTitle] = useState('');
+  const [submitting, setSubmitting] = useState(false);
   const normalizedTitle = title.trim();
 
-  function handleSubmit(
+  async function handleSubmit(
     event: FormEvent<HTMLFormElement>,
   ) {
     event.preventDefault();
 
-    if (!normalizedTitle) {
+    if (!normalizedTitle || submitting) {
       return;
     }
 
-    onAddTask(normalizedTitle);
-    setTitle('');
+    setSubmitting(true);
+    const created = await onAddTask(normalizedTitle);
+    setSubmitting(false);
+
+    if (created) {
+      setTitle('');
+    }
   }
 
   return (
@@ -65,9 +72,9 @@ export function TaskForm({
 
           <button
             type="submit"
-            disabled={!normalizedTitle}
+            disabled={!normalizedTitle || submitting}
           >
-            Agregar tarea
+            {submitting ? 'Guardando…' : 'Agregar tarea'}
           </button>
         </div>
 

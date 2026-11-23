@@ -1,12 +1,13 @@
 import { useState } from 'react';
 import type { FormEvent } from 'react';
+import { useAuth } from '../hooks/useAuth';
 import type { Task } from '../models/task.interface';
 import { TaskStatusBadge } from './TaskStatusBadge';
 
 interface TaskItemProps {
   task: Task;
   onToggleStatus: (id: string) => void;
-  onEditTask: (id: string, title: string) => void;
+  onEditTask: (id: string, title: string) => Promise<boolean>;
   onDeleteTask: (id: string) => void;
 }
 
@@ -23,6 +24,9 @@ export function TaskItem({
   onDeleteTask,
 }: TaskItemProps) {
   const { id, title, status, updatedAt } = task;
+  // Solo oculta el botón: DELETE sigue exigiendo rol admin en la API.
+  const { user } = useAuth();
+  const canDelete = user?.role === 'admin';
   const [isEditing, setIsEditing] = useState(false);
   const [draftTitle, setDraftTitle] = useState(title);
   const normalizedDraft = draftTitle.trim();
@@ -37,7 +41,7 @@ export function TaskItem({
     setIsEditing(false);
   }
 
-  function handleEditSubmit(
+  async function handleEditSubmit(
     event: FormEvent<HTMLFormElement>,
   ) {
     event.preventDefault();
@@ -46,8 +50,11 @@ export function TaskItem({
       return;
     }
 
-    onEditTask(id, normalizedDraft);
-    setIsEditing(false);
+    const saved = await onEditTask(id, normalizedDraft);
+
+    if (saved) {
+      setIsEditing(false);
+    }
   }
 
   return (
@@ -137,14 +144,16 @@ export function TaskItem({
           Editar
         </button>
 
-        <button
-          type="button"
-          className="button-danger"
-          onClick={() => onDeleteTask(id)}
-          disabled={isEditing}
-        >
-          Eliminar
-        </button>
+        {canDelete && (
+          <button
+            type="button"
+            className="button-danger"
+            onClick={() => onDeleteTask(id)}
+            disabled={isEditing}
+          >
+            Eliminar
+          </button>
+        )}
       </div>
     </article>
   );

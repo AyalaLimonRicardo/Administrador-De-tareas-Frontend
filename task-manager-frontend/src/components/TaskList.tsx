@@ -3,21 +3,23 @@ import { TaskItem } from './TaskItem';
 
 interface TaskListProps {
   tasks: Task[];
+  total: number;
   onToggleStatus: (id: string) => void;
-  onEditTask: (id: string, title: string) => void;
+  onEditTask: (id: string, title: string) => Promise<boolean>;
   onDeleteTask: (id: string) => void;
 }
 
 export function TaskList({
   tasks,
+  total,
   onToggleStatus,
   onEditTask,
   onDeleteTask,
 }: TaskListProps) {
   const resultLabel =
-    tasks.length === 1
+    total === 1
       ? '1 tarea'
-      : `${tasks.length} tareas`;
+      : `${total} tareas`;
 
   return (
     <section
@@ -42,10 +44,10 @@ export function TaskList({
 
       {tasks.length === 0 ? (
         <div className="empty-state" role="status">
-          <h3>No hay tareas registradas</h3>
+          <h3>No hay tareas para mostrar</h3>
           <p>
-            Utiliza el formulario para registrar
-            una nueva actividad.
+            Registra una actividad nueva o cambia
+            los filtros de búsqueda.
           </p>
         </div>
       ) : (
