@@ -1,72 +1,104 @@
-import type { TaskStatus } from '../models/task.interface';
-
-export type StatusFilter = TaskStatus | 'all';
-export type OrderOption = 'newest' | 'oldest' | 'title';
+import type {
+  TaskFilter,
+  TaskSort,
+} from '../models/task-view.types';
 
 interface TaskFiltersProps {
-  search: string;
-  status: StatusFilter;
-  order: OrderOption;
-  onSearchChange: (value: string) => void;
-  onStatusChange: (value: StatusFilter) => void;
-  onOrderChange: (value: OrderOption) => void;
+  query: string;
+  filter: TaskFilter;
+  sortBy: TaskSort;
+  resultCount: number;
+  isLoading: boolean;
+  onQueryChange: (value: string) => void;
+  onFilterChange: (value: TaskFilter) => void;
+  onSortChange: (value: TaskSort) => void;
+  onClear: () => void;
 }
 
 export function TaskFilters({
-  search,
-  status,
-  order,
-  onSearchChange,
-  onStatusChange,
-  onOrderChange,
+  query,
+  filter,
+  sortBy,
+  resultCount,
+  isLoading,
+  onQueryChange,
+  onFilterChange,
+  onSortChange,
+  onClear,
 }: TaskFiltersProps) {
   return (
-    <section className="panel" aria-labelledby="filters-title">
-      <div className="section-heading">
-        <div>
-          <p className="section-heading__eyebrow">Consulta</p>
-          <h2 id="filters-title">Buscar y organizar</h2>
-        </div>
-      </div>
+    <section
+      className="task-filters panel"
+      aria-labelledby="filters-title"
+    >
+      <h3 id="filters-title">Consultar tareas</h3>
 
-      <div className="filters-grid">
-        <div className="field">
-          <label htmlFor="task-search">Buscar por título</label>
+      <div className="task-filters__grid">
+        <label>
+          Buscar
           <input
-            id="task-search"
             type="search"
+            value={query}
             maxLength={60}
-            placeholder="Escribe una palabra"
-            value={search}
-            onChange={(event) => onSearchChange(event.target.value)}
+            placeholder="Ejemplo: preparar"
+            onChange={(event) =>
+              onQueryChange(event.target.value)
+            }
           />
-        </div>
+        </label>
 
-        <div className="field">
-          <label htmlFor="status-filter">Estado</label>
+        <label>
+          Estado
           <select
-            id="status-filter"
-            value={status}
-            onChange={(event) => onStatusChange(event.target.value as StatusFilter)}
+            value={filter}
+            onChange={(event) =>
+              onFilterChange(
+                event.target.value as TaskFilter,
+              )
+            }
           >
             <option value="all">Todas</option>
             <option value="pending">Pendientes</option>
             <option value="completed">Completadas</option>
           </select>
-        </div>
+        </label>
 
-        <div className="field">
-          <label htmlFor="task-order">Orden</label>
+        <label>
+          Orden
           <select
-            id="task-order"
-            value={order}
-            onChange={(event) => onOrderChange(event.target.value as OrderOption)}
+            value={sortBy}
+            onChange={(event) =>
+              onSortChange(
+                event.target.value as TaskSort,
+              )
+            }
           >
-            <option value="newest">Más recientes</option>
-            <option value="oldest">Más antiguas</option>
-            <option value="title">Por título</option>
+            <option value="updated-desc">
+              Actualizadas recientemente
+            </option>
+            <option value="updated-asc">
+              Actualizadas anteriormente
+            </option>
+            <option value="title-asc">
+              Título A-Z
+            </option>
+            <option value="title-desc">
+              Título Z-A
+            </option>
           </select>
-        </div>
+        </label>
+      </div>
+
+      <div className="task-filters__footer">
+        <p role="status">
+          {isLoading
+            ? 'Actualizando resultados...'
+            : `${resultCount} resultado(s)`}
+        </p>
+
+        <button type="button" onClick={onClear}>
+          Limpiar criterios
+        </button>
       </div>
     </section>
   );

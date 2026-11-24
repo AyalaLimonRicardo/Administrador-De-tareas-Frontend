@@ -1,87 +1,133 @@
 import { useState } from 'react';
 import type { FormEvent } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { FormMessage } from '../components/FormMessage';
+import {
+  Link,
+  useLocation,
+  useNavigate,
+} from 'react-router';
 import { useAuth } from '../hooks/useAuth';
-import { describeError } from '../utils/errors';
+import { getHttpErrorMessage } from '../services/http.service';
+
+interface LoginLocationState {
+  from?: { pathname: string; search?: string };
+  registered?: boolean;
+  email?: string;
+}
 
 export function LoginPage() {
-  const { login, sessionNotice } = useAuth();
+  const { login, sessionMessage, clearSessionMessage } =
+    useAuth();
   const navigate = useNavigate();
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState<string | null>(null);
-  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
-  const [submitting, setSubmitting] = useState(false);
+  const location = useLocation();
+  const state = (location.state ??
+    {}) as LoginLocationState;
 
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  const [email, setEmail] = useState(state.email ?? '');
+  const [password, setPassword] = useState('');
+  const [errorMessage, setErrorMessage] = useState('');
+  const [isSubmitting, setIsSubmitting] =
+    useState(false);
+
+  const destination = state.from
+    ? `${state.from.pathname}${state.from.search ?? ''}`
+    : '/tasks';
+
+  async function handleSubmit(
+    event: FormEvent<HTMLFormElement>,
+  ): Promise<void> {
     event.preventDefault();
-    setError(null);
-    setFieldErrors({});
-    setSubmitting(true);
+    setErrorMessage('');
+    clearSessionMessage();
+
+    if (!email.trim() || !password) {
+      setErrorMessage(
+        'Escribe tu correo y tu contraseña.',
+      );
+      return;
+    }
+
+    setIsSubmitting(true);
 
     try {
       await login({ email: email.trim(), password });
-      navigate('/', { replace: true });
-    } catch (caught: unknown) {
-      const described = describeError(caught);
-      setError(described.message);
-      setFieldErrors(described.fields);
-      setSubmitting(false);
+      navigate(destination, { replace: true });
+    } catch (error) {
+      setErrorMessage(getHttpErrorMessage(error));
+      setIsSubmitting(false);
     }
   }
 
   return (
-    <section className="panel auth-card" aria-labelledby="login-title">
-      <div className="section-heading">
-        <div>
-          <p className="section-heading__eyebrow">Acceso</p>
-          <h2 id="login-title">Iniciar sesión</h2>
-        </div>
-      </div>
+    <section
+      className="panel auth-panel"
+      aria-labelledby="login-title"
+    >
+      <p className="section-heading__eyebrow">Acceso</p>
+      <h2 id="login-title">Iniciar sesión</h2>
 
-      <FormMessage message={sessionNotice} tone="info" />
+      {state.registered && (
+        <p role="status" className="permission-note">
+          Cuenta creada. Ahora inicia sesión.
+        </p>
+      )}
 
-      <form className="auth-form" onSubmit={handleSubmit} noValidate>
-        <div className="field">
-          <label htmlFor="login-email">Correo electrónico</label>
+      {sessionMessage && (
+        <p role="alert" className="field-error">
+          {sessionMessage}
+        </p>
+      )}
+
+      <form
+        className="auth-form"
+        onSubmit={handleSubmit}
+        noValidate
+      >
+        <div className="form-field">
+          <label htmlFor="login-email">
+            Correo electrónico
+          </label>
           <input
             id="login-email"
             type="email"
             autoComplete="email"
             value={email}
-            onChange={(event) => setEmail(event.target.value)}
-            aria-invalid={Boolean(fieldErrors.email)}
-            required
+            disabled={isSubmitting}
+            onChange={(event) =>
+              setEmail(event.target.value)
+            }
           />
-          {fieldErrors.email && <span className="field-error">{fieldErrors.email}</span>}
         </div>
 
-        <div className="field">
-          <label htmlFor="login-password">Contraseña</label>
+        <div className="form-field">
+          <label htmlFor="login-password">
+            Contraseña
+          </label>
           <input
             id="login-password"
             type="password"
             autoComplete="current-password"
             value={password}
-            onChange={(event) => setPassword(event.target.value)}
-            aria-invalid={Boolean(fieldErrors.password)}
-            required
+            disabled={isSubmitting}
+            onChange={(event) =>
+              setPassword(event.target.value)
+            }
           />
-          {fieldErrors.password && (
-            <span className="field-error">{fieldErrors.password}</span>
-          )}
         </div>
 
-        <FormMessage message={error} />
+        {errorMessage && (
+          <p className="field-error" role="alert">
+            {errorMessage}
+          </p>
+        )}
 
-        <button type="submit" disabled={submitting || !email.trim() || !password}>
-          {submitting ? 'Ingresando…' : 'Ingresar'}
+        <button type="submit" disabled={isSubmitting}>
+          {isSubmitting ? 'Ingresando...' : 'Ingresar'}
         </button>
       </form>
 
-      <p className="helper-text auth-switch">
-        ¿Todavía no tienes cuenta? <Link to="/register">Regístrate</Link>
+      <p className="auth-alternative">
+        ¿No tienes cuenta?{' '}
+        <Link to="/register">Crear cuenta</Link>
       </p>
     </section>
   );

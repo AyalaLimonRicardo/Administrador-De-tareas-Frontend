@@ -1,20 +1,22 @@
 import { useState } from 'react';
 import type { FormEvent } from 'react';
-import { useAuth } from '../hooks/useAuth';
+import { Link } from 'react-router';
 import type { Task } from '../models/task.interface';
-import { TaskStatusBadge } from './TaskStatusBadge';
+import { formatTaskDate } from '../utils/date';
+import {
+  TASK_TITLE_MAX_LENGTH,
+  validateTaskTitle,
+} from '../utils/task-validation';
 
 interface TaskItemProps {
   task: Task;
-  onToggleStatus: (id: string) => void;
-  onEditTask: (id: string, title: string) => Promise<boolean>;
-  onDeleteTask: (id: string) => void;
-}
-
-function formatTaskDate(value: string): string {
-  return new Intl.DateTimeFormat('es-MX', {
-    dateStyle: 'medium',
-  }).format(new Date(value));
+  onToggleStatus: (task: Task) => Promise<boolean>;
+  onEditTask: (
+    task: Task,
+    title: string,
+  ) => Promise<boolean>;
+  onDeleteTask: (task: Task) => Promise<boolean>;
+  canDelete: boolean;
 }
 
 export function TaskItem({
@@ -22,82 +24,115 @@ export function TaskItem({
   onToggleStatus,
   onEditTask,
   onDeleteTask,
+  canDelete,
 }: TaskItemProps) {
-  const { id, title, status, updatedAt } = task;
-  // Solo oculta el botón: DELETE sigue exigiendo rol admin en la API.
-  const { user } = useAuth();
-  const canDelete = user?.role === 'admin';
   const [isEditing, setIsEditing] = useState(false);
-  const [draftTitle, setDraftTitle] = useState(title);
-  const normalizedDraft = draftTitle.trim();
+  const [draftTitle, setDraftTitle] =
+    useState(task.title);
+  const [error, setError] = useState('');
+  const [isBusy, setIsBusy] = useState(false);
 
-  function handleStartEdit() {
-    setDraftTitle(title);
+  const statusLabel =
+    task.status === 'completed'
+      ? 'Completada'
+      : 'Pendiente';
+
+  function startEditing(): void {
+    setDraftTitle(task.title);
+    setError('');
     setIsEditing(true);
   }
 
-  function handleCancelEdit() {
-    setDraftTitle(title);
+  function cancelEditing(): void {
+    setDraftTitle(task.title);
+    setError('');
     setIsEditing(false);
   }
 
   async function handleEditSubmit(
     event: FormEvent<HTMLFormElement>,
-  ) {
+  ): Promise<void> {
     event.preventDefault();
 
-    if (!normalizedDraft) {
+    const validationMessage =
+      validateTaskTitle(draftTitle);
+
+    if (validationMessage) {
+      setError(validationMessage);
       return;
     }
 
-    const saved = await onEditTask(id, normalizedDraft);
+    setIsBusy(true);
+    const wasUpdated = await onEditTask(
+      task,
+      draftTitle.trim(),
+    );
+    setIsBusy(false);
 
-    if (saved) {
+    if (wasUpdated) {
       setIsEditing(false);
+      setError('');
     }
+  }
+
+  async function handleToggle(): Promise<void> {
+    setIsBusy(true);
+    await onToggleStatus(task);
+    setIsBusy(false);
+  }
+
+  async function handleDelete(): Promise<void> {
+    setIsBusy(true);
+    await onDeleteTask(task);
+    setIsBusy(false);
   }
 
   return (
     <article
-      className={`task-item task-item--${status}`}
+      className={`task-item task-item--${task.status}`}
       role="listitem"
+      aria-busy={isBusy}
     >
       <div className="task-item__content">
         {isEditing ? (
           <form
             className="task-item__edit-form"
             onSubmit={handleEditSubmit}
+            noValidate
           >
             <label
               className="sr-only"
-              htmlFor={`edit-task-${id}`}
+              htmlFor={`edit-task-${task.id}`}
             >
-              Editar título de la tarea
+              Editar título
             </label>
 
             <input
-              id={`edit-task-${id}`}
+              id={`edit-task-${task.id}`}
               className="task-item__edit-input"
               value={draftTitle}
+              maxLength={TASK_TITLE_MAX_LENGTH}
+              disabled={isBusy}
               onChange={(event) =>
                 setDraftTitle(event.target.value)
               }
-              maxLength={120}
               autoFocus
-              required
             />
 
+            {error && (
+              <p className="field-error" role="alert">
+                {error}
+              </p>
+            )}
+
             <div className="task-item__edit-actions">
-              <button
-                type="submit"
-                disabled={!normalizedDraft}
-              >
+              <button type="submit" disabled={isBusy}>
                 Guardar
               </button>
-
               <button
                 type="button"
-                onClick={handleCancelEdit}
+                disabled={isBusy}
+                onClick={cancelEditing}
               >
                 Cancelar
               </button>
@@ -106,15 +141,17 @@ export function TaskItem({
         ) : (
           <>
             <h3 className="task-item__title">
-              {title}
+              {task.title}
             </h3>
-
-            <TaskStatusBadge status={status} />
-
+            <span
+              className={`status-badge status-badge--${task.status}`}
+            >
+              {statusLabel}
+            </span>
             <p className="task-item__date">
               Actualizada:{' '}
-              <time dateTime={updatedAt}>
-                {formatTaskDate(updatedAt)}
+              <time dateTime={task.updatedAt}>
+                {formatTaskDate(task.updatedAt)}
               </time>
             </p>
           </>
@@ -124,22 +161,29 @@ export function TaskItem({
       <div
         className="task-item__actions"
         role="group"
-        aria-label={`Acciones para ${title}`}
+        aria-label={`Acciones para ${task.title}`}
       >
+        <Link
+          className="button-link button-link--secondary"
+          to={`/tasks/${task.id}`}
+        >
+          Ver detalle
+        </Link>
+
         <button
           type="button"
-          onClick={() => onToggleStatus(id)}
-          disabled={isEditing}
+          disabled={isBusy || isEditing}
+          onClick={() => void handleToggle()}
         >
-          {status === 'completed'
+          {task.status === 'completed'
             ? 'Reabrir'
             : 'Completar'}
         </button>
 
         <button
           type="button"
-          onClick={handleStartEdit}
-          disabled={isEditing}
+          disabled={isBusy || isEditing}
+          onClick={startEditing}
         >
           Editar
         </button>
@@ -148,8 +192,8 @@ export function TaskItem({
           <button
             type="button"
             className="button-danger"
-            onClick={() => onDeleteTask(id)}
-            disabled={isEditing}
+            disabled={isBusy || isEditing}
+            onClick={() => void handleDelete()}
           >
             Eliminar
           </button>

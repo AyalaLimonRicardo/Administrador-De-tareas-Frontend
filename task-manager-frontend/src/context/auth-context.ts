@@ -1,21 +1,22 @@
 import { createContext } from 'react';
 import type {
+  AuthStatus,
   AuthUser,
   LoginCredentials,
   RegisterInput,
-} from '../models/auth.interface';
-
-// checking: aún se verifica el token guardado con GET /api/auth/me.
-export type AuthStatus = 'checking' | 'authenticated' | 'anonymous';
+} from '../models/auth.types';
 
 export interface AuthContextValue {
   status: AuthStatus;
   user: AuthUser | null;
-  // Mensaje para la pantalla de login cuando la sesión terminó sin que el usuario lo pidiera.
-  sessionNotice: string | null;
+  accessToken: string | null;
+  isAdmin: boolean;
+  sessionMessage: string;
   login: (credentials: LoginCredentials) => Promise<void>;
   register: (input: RegisterInput) => Promise<void>;
   logout: () => void;
+  clearSessionMessage: () => void;
 }
 
-export const AuthContext = createContext<AuthContextValue | null>(null);
+export const AuthContext =
+  createContext<AuthContextValue | null>(null);

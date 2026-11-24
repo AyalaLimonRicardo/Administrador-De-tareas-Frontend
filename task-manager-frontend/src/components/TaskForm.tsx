@@ -1,87 +1,92 @@
 import { useState } from 'react';
 import type { FormEvent } from 'react';
+import {
+  TASK_TITLE_MAX_LENGTH,
+  validateTaskTitle,
+} from '../utils/task-validation';
 
 interface TaskFormProps {
-  // Devuelve true cuando la API aceptó la tarea; si falla, el título se conserva.
+  isSubmitting: boolean;
   onAddTask: (title: string) => Promise<boolean>;
 }
 
 export function TaskForm({
+  isSubmitting,
   onAddTask,
 }: TaskFormProps) {
   const [title, setTitle] = useState('');
-  const [submitting, setSubmitting] = useState(false);
-  const normalizedTitle = title.trim();
+  const [error, setError] = useState('');
+
+  function handleTitleChange(value: string): void {
+    setTitle(value);
+
+    if (error) {
+      setError(validateTaskTitle(value) ?? '');
+    }
+  }
 
   async function handleSubmit(
     event: FormEvent<HTMLFormElement>,
-  ) {
+  ): Promise<void> {
     event.preventDefault();
 
-    if (!normalizedTitle || submitting) {
+    const validationMessage =
+      validateTaskTitle(title);
+
+    if (validationMessage) {
+      setError(validationMessage);
       return;
     }
 
-    setSubmitting(true);
-    const created = await onAddTask(normalizedTitle);
-    setSubmitting(false);
+    const wasCreated = await onAddTask(
+      title.trim(),
+    );
 
-    if (created) {
+    if (wasCreated) {
       setTitle('');
+      setError('');
     }
   }
 
   return (
-    <section
-      className="panel"
-      aria-labelledby="task-form-title"
+    <form
+      className="task-form panel"
+      onSubmit={handleSubmit}
+      noValidate
     >
-      <div className="section-heading">
-        <div>
-          <p className="section-heading__eyebrow">
-            Registro
-          </p>
+      <label htmlFor="task-title">
+        Nueva tarea
+      </label>
 
-          <h2 id="task-form-title">
-            Nueva tarea
-          </h2>
-        </div>
+      <div className="task-form__row">
+        <input
+          id="task-title"
+          value={title}
+          maxLength={TASK_TITLE_MAX_LENGTH}
+          disabled={isSubmitting}
+          onChange={(event) =>
+            handleTitleChange(event.target.value)
+          }
+          aria-invalid={Boolean(error)}
+          aria-describedby={
+            error ? 'task-title-error' : undefined
+          }
+        />
+
+        <button type="submit" disabled={isSubmitting}>
+          {isSubmitting ? 'Guardando...' : 'Agregar'}
+        </button>
       </div>
 
-      <form
-        className="task-form"
-        onSubmit={handleSubmit}
-      >
-        <label htmlFor="task-title">
-          Título de la tarea
-        </label>
-
-        <div className="task-form__row">
-          <input
-            id="task-title"
-            name="title"
-            type="text"
-            placeholder="Ejemplo: revisar documentación"
-            maxLength={120}
-            value={title}
-            onChange={(event) =>
-              setTitle(event.target.value)
-            }
-            required
-          />
-
-          <button
-            type="submit"
-            disabled={!normalizedTitle || submitting}
-          >
-            {submitting ? 'Guardando…' : 'Agregar tarea'}
-          </button>
-        </div>
-
-        <p className="helper-text">
-          {title.length}/120 caracteres
+      {error && (
+        <p
+          id="task-title-error"
+          className="field-error"
+          role="alert"
+        >
+          {error}
         </p>
-      </form>
-    </section>
+      )}
+    </form>
   );
 }

@@ -369,111 +369,220 @@ p { margin-top: 0; }
 }
 
 /* ---- Autenticación y sesión ---- */
-.app-header__top {
+
+/* Navegación y páginas (Actividad 9) */
+.app-navigation {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+.app-navigation a {
+  padding: 0.45rem 0.9rem;
+  border: 1px solid #bfdbfe;
+  border-radius: 999px;
+  color: #fff;
+  text-decoration: none;
+}
+
+.app-navigation a.active {
+  color: #1e3a8a;
+  background: #dbeafe;
+}
+
+.page-stack {
+  display: grid;
+  gap: 1.25rem;
+}
+
+.button-link {
+  display: inline-block;
+  padding: 0.7rem 1rem;
+  border: 1px solid #1d4ed8;
+  border-radius: 0.55rem;
+  color: #fff;
+  background: #1d4ed8;
+  text-decoration: none;
+}
+
+.button-link--secondary {
+  color: #1d4ed8;
+  background: #fff;
+}
+
+.task-form label {
+  display: block;
+  margin-bottom: 0.4rem;
+}
+
+.field-error {
+  margin: 0.5rem 0 0;
+  color: #b91c1c;
+  font-weight: 600;
+}
+
+.task-filters h3 { margin-top: 0; }
+
+.task-filters__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+  gap: 1rem;
+}
+
+.task-filters__grid label {
+  display: grid;
+  gap: 0.4rem;
+  font-weight: 700;
+}
+
+.task-filters__footer {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: 0.75rem;
-  margin-bottom: 0.4rem;
+  margin-top: 1rem;
 }
 
-.app-header__top .eyebrow { margin-bottom: 0; }
+.task-filters__footer p { margin: 0; }
 
-.session-info {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.75rem;
-  color: #dbeafe;
-  font-size: 0.95rem;
-}
-
-.session-info__name {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  font-weight: 600;
-}
-
-.role-badge {
-  border-radius: 999px;
-  padding: 0.15rem 0.55rem;
-  font-size: 0.75rem;
-  font-weight: 700;
-  color: #172554;
-  background: #bfdbfe;
-}
-
-.role-badge--admin {
-  background: #fde68a;
-}
-
-.button-secondary {
-  border-color: #93c5fd;
-  padding: 0.5rem 0.85rem;
-  color: #1e3a8a;
-  background: #eff6ff;
-}
-
-.app-header .button-secondary { border-color: #bfdbfe; }
-
-.auth-card {
-  align-self: start;
-  width: min(440px, 100%);
-  margin-inline: auto;
-}
-
-.auth-form {
+.task-detail__grid {
   display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
   gap: 1rem;
 }
 
-.auth-switch {
-  margin: 1rem 0 0;
-  text-align: center;
+.task-detail__grid dt { font-weight: 700; }
+.task-detail__grid dd { margin: 0.2rem 0 0; overflow-wrap: anywhere; }
+
+.task-detail__actions,
+.welcome-panel__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 1.25rem;
 }
 
-.field-error {
-  color: #b91c1c;
-  font-size: 0.85rem;
+/* Solicitudes remotas (Actividad 10) */
+.request-status,
+.operation-message {
+  margin: 1rem 0;
+  padding: 0.9rem 1rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 0.5rem;
+  background: #f8fafc;
 }
 
-input[aria-invalid="true"] { border-color: #b91c1c; }
-
-.alert {
-  margin: 0;
-  border-radius: 0.55rem;
-  padding: 0.7rem 0.9rem;
-  font-size: 0.92rem;
+.request-status--error,
+.operation-message--error {
+  border-color: #b91c1c;
 }
 
-.alert--error {
-  border: 1px solid #fecaca;
-  color: #991b1b;
-  background: #fef2f2;
+.request-status h3 {
+  margin-top: 0;
 }
 
-.alert--info {
-  margin-bottom: 1rem;
-  border: 1px solid #bfdbfe;
-  color: #1e3a8a;
-  background: #eff6ff;
+.task-summary {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.75rem;
 }
-
-.session-check {
-  margin: 0;
-  color: #475569;
-  text-align: center;
-}
-
-.results { display: grid; gap: 1.25rem; }
-.results--loading { opacity: 0.6; transition: opacity 0.15s; }
 
 .pagination {
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 1rem;
-  color: #475569;
+  margin-top: 1.25rem;
+}
+
+[aria-busy='true'] {
+  opacity: 0.7;
+}
+
+@media (max-width: 640px) {
+  .task-summary,
+  .pagination {
+    align-items: stretch;
+    flex-direction: column;
+  }
+}
+
+/* ---- Autenticación y sesión (A11) ---- */
+.app-navigation-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.session-summary {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.session-summary span {
+  color: #455568;
+  font-size: 0.9rem;
+}
+
+.auth-panel {
+  width: min(100%, 560px);
+  margin-inline: auto;
+}
+
+.auth-form {
+  display: grid;
+  gap: 1rem;
+  margin-top: 1.25rem;
+}
+
+.form-field {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.form-field label {
+  font-weight: 700;
+}
+
+.form-field input {
+  width: 100%;
+  padding: 0.75rem;
+  border: 1px solid #aebccb;
+  border-radius: 0.5rem;
+}
+
+.form-field input:focus {
+  border-color: #1f4f7a;
+  outline: 3px solid #c5def2;
+}
+
+.form-field small,
+.auth-alternative,
+.permission-note {
+  color: #526173;
+}
+
+.auth-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.permission-note {
+  padding: 0.75rem 1rem;
+  border-left: 4px solid #1f4f7a;
+  background: #eef5fb;
+}
+
+@media (max-width: 720px) {
+  .app-navigation-bar,
+  .session-summary {
+    align-items: stretch;
+    flex-direction: column;
+  }
 }

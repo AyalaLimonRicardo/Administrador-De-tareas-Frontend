@@ -1,11 +1,30 @@
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router';
 
-export function NotFoundPage() {
+interface NotFoundPageProps {
+  title?: string;
+  message?: string;
+}
+
+export function NotFoundPage({
+  title = 'Página no encontrada',
+  message = 'La dirección solicitada no existe en esta aplicación.',
+}: NotFoundPageProps) {
   return (
-    <section className="panel empty-state">
-      <h2>Página no encontrada</h2>
-      <p>La dirección que abriste no existe.</p>
-      <Link to="/">Ir al inicio</Link>
+    <section
+      className="panel not-found"
+      aria-labelledby="not-found-title"
+    >
+      <p className="section-heading__eyebrow">
+        Error 404
+      </p>
+
+      <h2 id="not-found-title">{title}</h2>
+
+      <p>{message}</p>
+
+      <Link className="button-link" to="/tasks">
+        Volver a tareas
+      </Link>
     </section>
   );
 }

@@ -1,112 +1,156 @@
 import { useState } from 'react';
 import type { FormEvent } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { FormMessage } from '../components/FormMessage';
+import { Link, useNavigate } from 'react-router';
 import { useAuth } from '../hooks/useAuth';
-import { describeError } from '../utils/errors';
+import { getHttpErrorMessage } from '../services/http.service';
 
-const MIN_PASSWORD_CHARACTERS = 15;
+const MIN_PASSWORD_LENGTH = 15;
 
 export function RegisterPage() {
   const { register } = useAuth();
   const navigate = useNavigate();
+
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState<string | null>(null);
-  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
-  const [submitting, setSubmitting] = useState(false);
+  const [confirmation, setConfirmation] = useState('');
+  const [errorMessage, setErrorMessage] = useState('');
+  const [isSubmitting, setIsSubmitting] =
+    useState(false);
 
-  const passwordLength = Array.from(password).length;
-
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(
+    event: FormEvent<HTMLFormElement>,
+  ): Promise<void> {
     event.preventDefault();
-    setError(null);
-    setFieldErrors({});
-    setSubmitting(true);
+    setErrorMessage('');
+
+    if (!name.trim() || !email.trim()) {
+      setErrorMessage('Completa nombre y correo.');
+      return;
+    }
+
+    if (password.length < MIN_PASSWORD_LENGTH) {
+      setErrorMessage(
+        `La contraseña debe tener al menos ${MIN_PASSWORD_LENGTH} caracteres.`,
+      );
+      return;
+    }
+
+    if (password !== confirmation) {
+      setErrorMessage('Las contraseñas no coinciden.');
+      return;
+    }
+
+    setIsSubmitting(true);
 
     try {
-      // El registro no devuelve token: AuthProvider inicia sesión justo después.
-      await register({ name: name.trim(), email: email.trim(), password });
-      navigate('/', { replace: true });
-    } catch (caught: unknown) {
-      const described = describeError(caught);
-      setError(described.message);
-      setFieldErrors(described.fields);
-      setSubmitting(false);
+      await register({
+        name: name.trim(),
+        email: email.trim(),
+        password,
+      });
+      navigate('/login', {
+        replace: true,
+        state: {
+          registered: true,
+          email: email.trim(),
+        },
+      });
+    } catch (error) {
+      setErrorMessage(getHttpErrorMessage(error));
+      setIsSubmitting(false);
     }
   }
 
   return (
-    <section className="panel auth-card" aria-labelledby="register-title">
-      <div className="section-heading">
-        <div>
-          <p className="section-heading__eyebrow">Cuenta nueva</p>
-          <h2 id="register-title">Crear cuenta</h2>
-        </div>
-      </div>
+    <section
+      className="panel auth-panel"
+      aria-labelledby="register-title"
+    >
+      <p className="section-heading__eyebrow">Cuenta</p>
+      <h2 id="register-title">Crear cuenta</h2>
 
-      <form className="auth-form" onSubmit={handleSubmit} noValidate>
-        <div className="field">
+      <form
+        className="auth-form"
+        onSubmit={handleSubmit}
+        noValidate
+      >
+        <div className="form-field">
           <label htmlFor="register-name">Nombre</label>
           <input
             id="register-name"
-            type="text"
             autoComplete="name"
-            maxLength={80}
             value={name}
-            onChange={(event) => setName(event.target.value)}
-            aria-invalid={Boolean(fieldErrors.name)}
-            required
+            disabled={isSubmitting}
+            onChange={(event) =>
+              setName(event.target.value)
+            }
           />
-          {fieldErrors.name && <span className="field-error">{fieldErrors.name}</span>}
         </div>
 
-        <div className="field">
-          <label htmlFor="register-email">Correo electrónico</label>
+        <div className="form-field">
+          <label htmlFor="register-email">
+            Correo electrónico
+          </label>
           <input
             id="register-email"
             type="email"
             autoComplete="email"
             value={email}
-            onChange={(event) => setEmail(event.target.value)}
-            aria-invalid={Boolean(fieldErrors.email)}
-            required
+            disabled={isSubmitting}
+            onChange={(event) =>
+              setEmail(event.target.value)
+            }
           />
-          {fieldErrors.email && <span className="field-error">{fieldErrors.email}</span>}
         </div>
 
-        <div className="field">
-          <label htmlFor="register-password">Contraseña</label>
+        <div className="form-field">
+          <label htmlFor="register-password">
+            Contraseña
+          </label>
           <input
             id="register-password"
             type="password"
             autoComplete="new-password"
             value={password}
-            onChange={(event) => setPassword(event.target.value)}
-            aria-describedby="register-password-help"
-            aria-invalid={Boolean(fieldErrors.password)}
-            required
+            disabled={isSubmitting}
+            onChange={(event) =>
+              setPassword(event.target.value)
+            }
           />
-          <span id="register-password-help" className="helper-text">
-            Mínimo {MIN_PASSWORD_CHARACTERS} caracteres ({passwordLength} escritos).
-          </span>
-          {fieldErrors.password && (
-            <span className="field-error">{fieldErrors.password}</span>
-          )}
+          <small>
+            Mínimo {MIN_PASSWORD_LENGTH} caracteres.
+          </small>
         </div>
 
-        <FormMessage message={error} />
+        <div className="form-field">
+          <label htmlFor="register-confirmation">
+            Confirmar contraseña
+          </label>
+          <input
+            id="register-confirmation"
+            type="password"
+            autoComplete="new-password"
+            value={confirmation}
+            disabled={isSubmitting}
+            onChange={(event) =>
+              setConfirmation(event.target.value)
+            }
+          />
+        </div>
 
-        <button
-          type="submit"
-          disabled={submitting || !name.trim() || !email.trim() || !password}
-        >
-          {submitting ? 'Creando cuenta…' : 'Registrarme'}
+        {errorMessage && (
+          <p className="field-error" role="alert">
+            {errorMessage}
+          </p>
+        )}
+
+        <button type="submit" disabled={isSubmitting}>
+          {isSubmitting ? 'Creando...' : 'Crear cuenta'}
         </button>
       </form>
 
-      <p className="helper-text auth-switch">
+      <p className="auth-alternative">
         ¿Ya tienes cuenta? <Link to="/login">Inicia sesión</Link>
       </p>
     </section>

@@ -1,208 +1,307 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { Pagination } from '../components/Pagination';
-import { FormMessage } from '../components/FormMessage';
-import { TaskActions } from '../components/TaskActions';
+import { useState } from 'react';
+import { AsyncStatus } from '../components/AsyncStatus';
 import { TaskFilters } from '../components/TaskFilters';
-import type { OrderOption, StatusFilter } from '../components/TaskFilters';
 import { TaskForm } from '../components/TaskForm';
 import { TaskList } from '../components/TaskList';
+import { TaskPagination } from '../components/TaskPagination';
 import { TaskSummary } from '../components/TaskSummary';
-import type { Task, TaskPage, TaskQuery } from '../models/task.interface';
+import { useAuth } from '../hooks/useAuth';
+import { useTaskList } from '../hooks/useTaskList';
+import type {
+  TaskListQuery,
+  TaskSortField,
+  SortOrder,
+} from '../models/api.types';
+import type { Task } from '../models/task.interface';
+import type {
+  TaskFilter,
+  TaskSort,
+} from '../models/task-view.types';
+import { getHttpErrorMessage } from '../services/http.service';
 import {
-  createTask,
-  deleteTask,
-  fetchTasks,
-  updateTask,
-} from '../services/task.service';
-import { describeError } from '../utils/errors';
+  createTask as createTaskRequest,
+  deleteTask as deleteTaskRequest,
+  updateTask as updateTaskRequest,
+} from '../services/task.api.service';
 
-const PAGE_SIZE = 10;
-const SEARCH_DELAY_MS = 300;
+const PAGE_SIZE = 5;
 
-const ORDER_PARAMS: Record<OrderOption, Pick<TaskQuery, 'sortBy' | 'order'>> = {
-  newest: { sortBy: 'createdAt', order: 'desc' },
-  oldest: { sortBy: 'createdAt', order: 'asc' },
-  title: { sortBy: 'title', order: 'asc' },
-};
+function mapSort(sort: TaskSort): {
+  sortBy: TaskSortField;
+  order: SortOrder;
+} {
+  switch (sort) {
+    case 'updated-asc':
+      return { sortBy: 'updatedAt', order: 'asc' };
+    case 'title-asc':
+      return { sortBy: 'title', order: 'asc' };
+    case 'title-desc':
+      return { sortBy: 'title', order: 'desc' };
+    default:
+      return { sortBy: 'updatedAt', order: 'desc' };
+  }
+}
 
 export function TasksPage() {
-  // Cada respuesta recuerda a qué consulta pertenece; "cargando" se deriva de comparar claves.
-  const [loaded, setLoaded] = useState<{ key: string; page: TaskPage } | null>(null);
-  const [failure, setFailure] = useState<{ key: string; message: string } | null>(null);
-  const [actionError, setActionError] = useState<string | null>(null);
-
+  const { accessToken, isAdmin } = useAuth();
+  const [query, setQuery] = useState('');
+  const [filter, setFilter] =
+    useState<TaskFilter>('all');
+  const [sort, setSort] =
+    useState<TaskSort>('updated-desc');
   const [page, setPage] = useState(1);
-  const [searchInput, setSearchInput] = useState('');
-  const [search, setSearch] = useState('');
-  const [status, setStatus] = useState<StatusFilter>('all');
-  const [order, setOrder] = useState<OrderOption>('newest');
-  // Cambiar este número vuelve a consultar la API con los mismos filtros.
-  const [reloadKey, setReloadKey] = useState(0);
-  const appliedSearch = useRef('');
+  const [isMutating, setIsMutating] =
+    useState(false);
+  const [operationMessage, setOperationMessage] =
+    useState('');
+  const [operationFailed, setOperationFailed] =
+    useState(false);
 
-  const requestKey = `${page}|${search}|${status}|${order}|${reloadKey}`;
-  const result = loaded?.page ?? null;
-  const loadError = failure?.key === requestKey ? failure.message : null;
-  const loading = loaded?.key !== requestKey && failure?.key !== requestKey;
+  const mappedSort = mapSort(sort);
 
-  // Se espera a que el usuario deje de escribir antes de consultar.
-  useEffect(() => {
-    const timer = window.setTimeout(() => {
-      const normalized = searchInput.trim();
-      if (normalized === appliedSearch.current) return;
-      appliedSearch.current = normalized;
-      setSearch(normalized);
-      setPage(1);
-    }, SEARCH_DELAY_MS);
-    return () => window.clearTimeout(timer);
-  }, [searchInput]);
+  const taskListQuery: TaskListQuery = {
+    page,
+    limit: PAGE_SIZE,
+    search: query.trim() || undefined,
+    status: filter === 'all' ? undefined : filter,
+    sortBy: mappedSort.sortBy,
+    order: mappedSort.order,
+  };
 
-  useEffect(() => {
-    const controller = new AbortController();
-    const query: TaskQuery = {
-      page,
-      limit: PAGE_SIZE,
-      ...ORDER_PARAMS[order],
-      ...(status === 'all' ? {} : { status }),
-      ...(search ? { search } : {}),
-    };
+  const {
+    tasks,
+    meta,
+    status,
+    errorMessage,
+    reload,
+  } = useTaskList(taskListQuery, accessToken);
 
-    fetchTasks(query, controller.signal)
-      .then((response) => {
-        // Si se borró la última tarea de una página, se retrocede a una que exista.
-        if (response.data.length === 0 && page > 1 && response.meta.totalPages > 0) {
-          setPage(response.meta.totalPages);
-          return;
-        }
-        setLoaded({ key: requestKey, page: response });
-      })
-      .catch((error: unknown) => {
-        // Una consulta reemplazada por otra más reciente se descarta sin avisar.
-        if (controller.signal.aborted) return;
-        setFailure({ key: requestKey, message: describeError(error).message });
-      });
-
-    return () => controller.abort();
-  }, [page, search, status, order, reloadKey, requestKey]);
-
-  const reload = useCallback(() => setReloadKey((key) => key + 1), []);
-
-  async function runAction(action: () => Promise<unknown>): Promise<boolean> {
-    setActionError(null);
-    try {
-      await action();
-      reload();
-      return true;
-    } catch (error: unknown) {
-      setActionError(describeError(error).message);
+  async function runMutation(
+    operation: (token: string) => Promise<unknown>,
+    successMessage: string,
+  ): Promise<boolean> {
+    if (!accessToken) {
       return false;
+    }
+
+    setIsMutating(true);
+    setOperationMessage('');
+    setOperationFailed(false);
+
+    try {
+      await operation(accessToken);
+      setOperationMessage(successMessage);
+      return true;
+    } catch (error) {
+      setOperationFailed(true);
+      setOperationMessage(
+        getHttpErrorMessage(error),
+      );
+      return false;
+    } finally {
+      setIsMutating(false);
     }
   }
 
-  function handleAddTask(title: string): Promise<boolean> {
-    // La tarea nueva aparece primero en el orden por defecto: se vuelve a la página 1.
-    setPage(1);
-    return runAction(() => createTask(title));
-  }
-
-  function handleToggleStatus(id: string) {
-    const task = result?.data.find((item) => item.id === id);
-    if (!task) return;
-    void runAction(() =>
-      updateTask(id, { status: task.status === 'pending' ? 'completed' : 'pending' }),
-    );
-  }
-
-  function handleEditTask(id: string, title: string): Promise<boolean> {
-    return runAction(() => updateTask(id, { title }));
-  }
-
-  function handleDeleteTask(id: string) {
-    const task = result?.data.find((item) => item.id === id);
-    if (!task) return;
-    if (!window.confirm(`¿Eliminar la tarea "${task.title}"?`)) return;
-    void runAction(() => deleteTask(id));
-  }
-
-  async function handleClearCompleted() {
-    const completed: Task[] = (result?.data ?? []).filter(
-      (task) => task.status === 'completed',
-    );
-    if (completed.length === 0) return;
-    if (!window.confirm(`¿Eliminar ${completed.length} tarea(s) completada(s) de esta página?`)) {
+  function refreshAfterMutation(): void {
+    if (page !== 1) {
+      setPage(1);
       return;
     }
 
-    setActionError(null);
-    const outcomes = await Promise.allSettled(
-      completed.map((task) => deleteTask(task.id)),
-    );
-    const failed = outcomes.filter((outcome) => outcome.status === 'rejected');
-    if (failed.length > 0) {
-      const first = failed[0];
-      setActionError(
-        first?.status === 'rejected'
-          ? describeError(first.reason).message
-          : 'No se pudieron eliminar algunas tareas.',
-      );
-    }
     reload();
   }
 
-  const tasks = result?.data ?? [];
-  const completedCount = tasks.filter((task) => task.status === 'completed').length;
+  async function handleAddTask(
+    title: string,
+  ): Promise<boolean> {
+    const succeeded = await runMutation(
+      (token) => createTaskRequest({ title }, token),
+      'La tarea fue creada.',
+    );
+
+    if (succeeded) {
+      refreshAfterMutation();
+    }
+
+    return succeeded;
+  }
+
+  async function handleToggleStatus(
+    task: Task,
+  ): Promise<boolean> {
+    const nextStatus =
+      task.status === 'pending'
+        ? 'completed'
+        : 'pending';
+
+    const succeeded = await runMutation(
+      (token) => updateTaskRequest(task.id, {
+        status: nextStatus,
+      }, token),
+      'El estado fue actualizado.',
+    );
+
+    if (succeeded) {
+      reload();
+    }
+
+    return succeeded;
+  }
+
+  async function handleEditTask(
+    task: Task,
+    title: string,
+  ): Promise<boolean> {
+    const succeeded = await runMutation(
+      (token) => updateTaskRequest(task.id, { title }, token),
+      'El título fue actualizado.',
+    );
+
+    if (succeeded) {
+      reload();
+    }
+
+    return succeeded;
+  }
+
+  async function handleDeleteTask(
+    task: Task,
+  ): Promise<boolean> {
+    if (!isAdmin) {
+      return false;
+    }
+
+    const shouldDelete = window.confirm(
+      `¿Eliminar la tarea "${task.title}"?`,
+    );
+
+    if (!shouldDelete) {
+      return false;
+    }
+
+    const succeeded = await runMutation(
+      (token) => deleteTaskRequest(task.id, token),
+      'La tarea fue eliminada.',
+    );
+
+    if (succeeded) {
+      if (tasks.length === 1 && page > 1) {
+        setPage(page - 1);
+      } else {
+        reload();
+      }
+    }
+
+    return succeeded;
+  }
+
+  function handleQueryChange(value: string): void {
+    setQuery(value);
+    setPage(1);
+  }
+
+  function handleFilterChange(
+    value: TaskFilter,
+  ): void {
+    setFilter(value);
+    setPage(1);
+  }
+
+  function handleSortChange(value: TaskSort): void {
+    setSort(value);
+    setPage(1);
+  }
+
+  function handleClear(): void {
+    setQuery('');
+    setFilter('all');
+    setSort('updated-desc');
+    setPage(1);
+    setOperationMessage('');
+  }
 
   return (
-    <>
-      <TaskForm onAddTask={handleAddTask} />
-      <TaskFilters
-        search={searchInput}
-        status={status}
-        order={order}
-        onSearchChange={setSearchInput}
-        onStatusChange={(value) => {
-          setStatus(value);
-          setPage(1);
-        }}
-        onOrderChange={(value) => {
-          setOrder(value);
-          setPage(1);
-        }}
+    <div className="page-stack">
+      <section
+        className="page-introduction"
+        aria-labelledby="tasks-page-title"
+      >
+        <p className="section-heading__eyebrow">
+          Gestión remota
+        </p>
+        <h2 id="tasks-page-title">Mis tareas</h2>
+        <p>
+          Los cambios se guardan mediante la API REST.
+        </p>
+      </section>
+
+      {!isAdmin && (
+        <p className="permission-note">
+          La eliminación de tareas requiere el rol admin.
+        </p>
+      )}
+
+      <TaskForm
+        isSubmitting={isMutating}
+        onAddTask={handleAddTask}
       />
 
-      <FormMessage message={actionError} />
-
-      {loadError ? (
-        <section className="panel" role="alert">
-          <p className="alert alert--error">{loadError}</p>
-          <button type="button" onClick={reload}>
-            Reintentar
-          </button>
-        </section>
-      ) : result === null ? (
-        <p className="panel session-check" role="status">
-          Cargando tareas…
+      {operationMessage && (
+        <p
+          className={
+            operationFailed
+              ? 'operation-message operation-message--error'
+              : 'operation-message'
+          }
+          role={operationFailed ? 'alert' : 'status'}
+        >
+          {operationMessage}
         </p>
-      ) : (
-        <div className={loading ? 'results results--loading' : 'results'} aria-busy={loading}>
-          <TaskSummary tasks={tasks} total={result.meta.total} />
+      )}
 
-          <TaskActions
-            completedCount={completedCount}
-            onClearCompleted={() => void handleClearCompleted()}
+      <TaskFilters
+        query={query}
+        filter={filter}
+        sortBy={sort}
+        resultCount={meta.total}
+        isLoading={status === 'loading'}
+        onQueryChange={handleQueryChange}
+        onFilterChange={handleFilterChange}
+        onSortChange={handleSortChange}
+        onClear={handleClear}
+      />
+
+      <AsyncStatus
+        status={status}
+        errorMessage={errorMessage}
+        onRetry={reload}
+      />
+
+      {status !== 'error' && (
+        <>
+          <TaskSummary
+            tasks={tasks}
+            total={meta.total}
           />
 
           <TaskList
             tasks={tasks}
-            total={result.meta.total}
             onToggleStatus={handleToggleStatus}
             onEditTask={handleEditTask}
             onDeleteTask={handleDeleteTask}
+            canDelete={isAdmin}
           />
 
-          <Pagination meta={result.meta} disabled={loading} onPageChange={setPage} />
-        </div>
+          <TaskPagination
+            meta={meta}
+            disabled={
+              status === 'loading' || isMutating
+            }
+            onPageChange={setPage}
+          />
+        </>
       )}
-    </>
+    </div>
   );
 }
