@@ -1,3 +1,4 @@
+
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   httpRequest,
@@ -8,6 +9,7 @@ const fetchMock = vi.fn<typeof fetch>();
 
 describe('http.service', () => {
   beforeEach(() => {
+    fetchMock.mockReset();
     vi.stubGlobal('fetch', fetchMock);
   });
 
@@ -29,7 +31,11 @@ describe('http.service', () => {
     const [url, init] = fetchMock.mock.calls[0];
     const headers = new Headers(init?.headers);
 
-    expect(url).toBe('/api/tasks');
+    // Acepta URLs relativas y absolutas.
+    expect(
+      new URL(String(url), 'http://localhost').pathname,
+    ).toBe('/api/tasks');
+
     expect(headers.get('Accept')).toBe('application/json');
     expect(headers.get('Authorization')).toBe('Bearer token-demo');
   });
@@ -52,7 +58,10 @@ describe('http.service', () => {
     fetchMock.mockResolvedValue(
       new Response(
         JSON.stringify({
-          error: { code: 'TOKEN_INVALID', message: 'Token inválido.' },
+          error: {
+            code: 'TOKEN_INVALID',
+            message: 'Token inválido.',
+          },
         }),
         {
           status: 401,
@@ -63,7 +72,10 @@ describe('http.service', () => {
 
     await expect(
       httpRequest('/tasks', { accessToken: 'token-demo' }),
-    ).rejects.toMatchObject({ status: 401, code: 'TOKEN_INVALID' });
+    ).rejects.toMatchObject({
+      status: 401,
+      code: 'TOKEN_INVALID',
+    });
 
     expect(onUnauthorized).toHaveBeenCalledOnce();
   });
