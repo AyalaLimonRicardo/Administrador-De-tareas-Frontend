@@ -49,3 +49,17 @@ No se almacenan contraseñas ni se imprimen tokens. La API mantiene la autentica
 pnpm lint
 pnpm build
 ```
+
+## Pruebas, verificación y despliegue (A12)
+
+```bash
+pnpm install --frozen-lockfile
+pnpm verify          # lint + 9 pruebas + build
+pnpm smoke:production  # requiere FRONTEND_URL y BACKEND_URL (HTTPS)
+```
+
+- Desarrollo: `VITE_API_URL=/api` (Vite reenvía `/api` a `localhost:3000`).
+- Producción (Vercel): `VITE_API_URL=https://BACKEND.vercel.app/api`, definida en el panel de Vercel; un cambio exige un nuevo despliegue.
+- Frontend: URL_FRONTEND · API: URL_BACKEND · Versión: 1.0.0
+
+Consulta `docs/deployment-configuration.md` y `docs/release-checklist.md`.

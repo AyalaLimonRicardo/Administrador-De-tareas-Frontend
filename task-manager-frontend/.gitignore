@@ -22,3 +22,14 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Variables de entorno (A12): las plantillas sí se versionan
+.env
+.env.local
+.env.*.local
+.env.production
+!.env.example
+!.env.production.example
+!.env.test
+!.env.development
+.vercel
